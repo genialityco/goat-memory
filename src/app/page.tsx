@@ -145,9 +145,6 @@ export default function Home() {
             <div className="flex justify-center">
               <QRCodeSVG value={qrHref} size={220} includeMargin />
             </div>
-            <div className="text-xs break-all">
-              También puedes <a className="underline" href={qrHref}>abrir el enlace</a>.
-            </div>
           </div>
         )}
       </div>
