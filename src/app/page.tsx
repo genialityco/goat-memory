@@ -3,23 +3,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { getApps, initializeApp } from "firebase/app";
 import {
-  getFirestore,
   collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
   query,
   where,
-  limit,
-  getDocs,
 } from "firebase/firestore";
+import { db } from "./firebaseClient"; // <-- tu inicialización central con initializeFirestore
 
-// Si ya tienes estos tipos en un archivo (p. ej. src/types.ts), impórtalos.
-// import type { UserDoc } from "@/types";
-
-// --- Tipos según tu mensaje ---
+// --- Tipos (idénticos a los que compartiste) ---
 import type { Timestamp, FieldValue } from "firebase/firestore";
+
 export interface TypeProject {
   updatedAt: Timestamp | FieldValue;
   url: string;
@@ -36,32 +33,17 @@ export interface UserDoc {
   projects: ProjectsMap;
 }
 
-// --- Firebase config (usa tus NEXT_PUBLIC_*) ---
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-};
-
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 // --- Utils ---
 const normalizePhone = (s: string) => (s || "").replace(/\D/g, "");
 
 async function findUserByPhone(phone: string): Promise<(UserDoc & { id: string }) | null> {
   const usersCol = collection(db, "users");
 
-  // 1) Intenta docId === phone
+  // 1) Intentar docId === phone
   const byId = await getDoc(doc(usersCol, phone));
-  if (byId.exists()) {
-    return { id: byId.id, ...(byId.data() as UserDoc) };
-  }
+  if (byId.exists()) return { id: byId.id, ...(byId.data() as UserDoc) };
 
-  // 2) Campo phone == phone
+  // 2) Buscar por campo phone
   const q = query(usersCol, where("phone", "==", phone), limit(1));
   const snap = await getDocs(q);
   if (!snap.empty) {
@@ -118,12 +100,13 @@ export default function Home() {
     }
   };
 
-  // Construye el link a /api/download con la URL real en base64
+  // Link absoluto a /api/download con la URL real en base64
   const qrHref = useMemo(() => {
     if (!goatBodyUrl || !origin) return "";
-    const b64 = typeof window === "undefined"
-      ? ""
-      : btoa(unescape(encodeURIComponent(goatBodyUrl)));
+    const b64 =
+      typeof window === "undefined"
+        ? ""
+        : btoa(unescape(encodeURIComponent(goatBodyUrl)));
     return `${origin}/api/download?u=${encodeURIComponent(b64)}`;
   }, [goatBodyUrl, origin]);
 
@@ -161,6 +144,9 @@ export default function Home() {
             <div className="font-medium">Escanea para descargar tu GOAT Body</div>
             <div className="flex justify-center">
               <QRCodeSVG value={qrHref} size={220} includeMargin />
+            </div>
+            <div className="text-xs break-all">
+              También puedes <a className="underline" href={qrHref}>abrir el enlace</a>.
             </div>
           </div>
         )}
