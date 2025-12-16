@@ -36,6 +36,9 @@ export async function GET(req: NextRequest) {
   // Intenta determinar nombre
   let filename =
     target.pathname.split("/").pop() || `download-${Date.now()}`;
+  if (!filename.endsWith(".mp4")) {
+    filename += ".mp4";
+  }
   const cd = upstream.headers.get("content-disposition");
   const match =
     cd && cd.match(/filename\*?=(?:UTF-8''|")?([^\";]+)\"?/i);
